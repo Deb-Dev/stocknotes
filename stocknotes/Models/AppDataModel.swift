@@ -13,7 +13,9 @@ struct AppDataModel {
         let schema = Schema([
             Note.self,
             Symbol.self,
-            Tag.self
+            Tag.self,
+            TemplateData.self,
+            PriceTarget.self
         ])
         
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)

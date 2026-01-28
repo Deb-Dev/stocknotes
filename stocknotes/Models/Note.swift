@@ -15,12 +15,17 @@ final class Note {
     var createdDate: Date
     var lastEditedDate: Date
     var isSnap: Bool
+    var conviction: Int? // 1-10 scale
+    var sentimentRawValue: String? // Store sentiment as String for SwiftData
     
     @Relationship(deleteRule: .nullify, inverse: \Symbol.notes)
     var symbol: Symbol?
     
     @Relationship(deleteRule: .nullify)
     var tags: [Tag]?
+    
+    @Relationship(deleteRule: .nullify)
+    var templateData: TemplateData?
     
     var images: [Data]?
     
@@ -32,7 +37,9 @@ final class Note {
         createdDate: Date = Date(),
         lastEditedDate: Date = Date(),
         isSnap: Bool = false,
-        images: [Data]? = nil
+        images: [Data]? = nil,
+        conviction: Int? = nil,
+        sentiment: Sentiment? = nil
     ) {
         self.id = id
         self.content = content
@@ -42,6 +49,19 @@ final class Note {
         self.lastEditedDate = lastEditedDate
         self.isSnap = isSnap
         self.images = images ?? []
+        self.conviction = conviction
+        self.sentimentRawValue = sentiment?.rawValue
+    }
+    
+    // Convenience property for sentiment
+    var sentiment: Sentiment? {
+        get {
+            guard let rawValue = sentimentRawValue else { return nil }
+            return Sentiment(rawValue: rawValue)
+        }
+        set {
+            sentimentRawValue = newValue?.rawValue
+        }
     }
     
     // Helper to validate content length (5000 char limit)

@@ -17,13 +17,20 @@ struct SymbolDetailView: View {
     @State private var noteService: NoteService?
     @State private var symbolService: SymbolService?
     @State private var snapService: SnapService?
+    @State private var priceTargetService: PriceTargetService?
     
     @State private var showingNewNote = false
     @State private var selectedNote: Note?
     @State private var isRefreshingPrice = false
+    @State private var showingPriceTargets = false
+    @Query(sort: \PriceTarget.createdDate, order: .reverse) private var allPriceTargets: [PriceTarget]
     
     private var notes: [Note] {
         allNotes.filter { $0.symbol?.ticker == symbol.ticker }
+    }
+    
+    private var priceTargets: [PriceTarget] {
+        allPriceTargets.filter { $0.symbol?.ticker == symbol.ticker }
     }
     
     init(symbol: Symbol) {
@@ -119,6 +126,62 @@ struct SymbolDetailView: View {
                     }
                     .padding(.horizontal)
                     
+                    // Price Targets Section
+                    if !priceTargets.isEmpty {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                Text("Price Targets (\(priceTargets.count))")
+                                    .font(.headline)
+                                
+                                Spacer()
+                                
+                                Button("View All") {
+                                    showingPriceTargets = true
+                                }
+                                .font(.subheadline)
+                                .foregroundColor(.blue)
+                            }
+                            .padding(.horizontal)
+                            
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 12) {
+                                    ForEach(priceTargets.prefix(3)) { target in
+                                        PriceTargetCard(
+                                            priceTarget: target,
+                                            currentPrice: symbol.currentPrice
+                                        )
+                                        .frame(width: 280)
+                                    }
+                                }
+                                .padding(.horizontal)
+                            }
+                        }
+                    }
+                    
+                    // Analytics Section
+                    if !notes.isEmpty || !priceTargets.isEmpty {
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("Analytics")
+                                .font(.headline)
+                                .padding(.horizontal)
+                            
+                            // Conviction Chart
+                            if notes.contains(where: { $0.conviction != nil }) {
+                                ConvictionChartView(notes: notes)
+                                    .padding(.horizontal)
+                            }
+                            
+                            // Price Target Comparison
+                            if !priceTargets.isEmpty, symbol.currentPrice != nil {
+                                PriceTargetComparisonView(
+                                    priceTargets: priceTargets,
+                                    currentPrice: symbol.currentPrice
+                                )
+                                .padding(.horizontal)
+                            }
+                        }
+                    }
+                    
                     // Notes List
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Notes (\(notes.count))")
@@ -160,6 +223,9 @@ struct SymbolDetailView: View {
             .sheet(item: $selectedNote) { note in
                 NoteDetailView(note: note)
             }
+            .sheet(isPresented: $showingPriceTargets) {
+                PriceTargetsView(symbol: symbol)
+            }
             .onAppear {
                 initializeServices()
             }
@@ -171,6 +237,7 @@ struct SymbolDetailView: View {
             noteService = NoteService(modelContext: modelContext)
             symbolService = SymbolService(modelContext: modelContext)
             snapService = SnapService(modelContext: modelContext)
+            priceTargetService = PriceTargetService(modelContext: modelContext)
         }
     }
     

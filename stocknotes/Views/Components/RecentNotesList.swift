@@ -50,6 +50,12 @@ struct NotePreviewRow: View {
                         .cornerRadius(6)
                 }
                 
+                if let conviction = note.conviction {
+                    ConvictionIndicatorView(conviction: conviction, size: .small)
+                }
+                
+                SentimentBadgeView(sentiment: note.sentiment)
+                
                 Spacer()
                 
                 Text(note.createdDate, style: .relative)

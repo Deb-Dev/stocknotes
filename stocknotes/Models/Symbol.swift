@@ -18,6 +18,9 @@ final class Symbol {
     @Relationship(deleteRule: .cascade)
     var notes: [Note]?
     
+    @Relationship(deleteRule: .cascade)
+    var priceTargets: [PriceTarget]?
+    
     init(
         ticker: String,
         companyName: String = "",

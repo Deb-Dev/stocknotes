@@ -13,6 +13,14 @@ struct SymbolCard: View {
     let onSnap: () -> Void
     let onDelete: () -> Void
     
+    private var averageConviction: Int? {
+        guard let notes = symbol.notes, !notes.isEmpty else { return nil }
+        let convictions = notes.compactMap { $0.conviction }
+        guard !convictions.isEmpty else { return nil }
+        let sum = convictions.reduce(0, +)
+        return Int(Double(sum) / Double(convictions.count).rounded())
+    }
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -59,7 +67,11 @@ struct SymbolCard: View {
                 
                 Spacer()
                 
-                VStack(alignment: .trailing, spacing: 2) {
+                VStack(alignment: .trailing, spacing: 4) {
+                    if let avgConviction = averageConviction {
+                        ConvictionIndicatorView(conviction: avgConviction, size: .medium)
+                    }
+                    
                     Text("\(symbol.noteCount) notes")
                         .font(.caption)
                         .foregroundColor(.secondary)
