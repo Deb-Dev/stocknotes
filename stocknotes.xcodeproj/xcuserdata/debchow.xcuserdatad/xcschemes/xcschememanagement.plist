@@ -9,6 +9,29 @@
 			<key>orderHint</key>
 			<integer>0</integer>
 		</dict>
+		<key>stocknotesUITests.xcscheme_^#shared#^_</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>1</integer>
+		</dict>
+	</dict>
+	<key>SuppressBuildableAutocreation</key>
+	<dict>
+		<key>6F2635742F299727008B634F</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>6F2635812F299729008B634F</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>6F26358B2F299729008B634F</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
 	</dict>
 </dict>
 </plist>

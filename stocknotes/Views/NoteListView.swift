@@ -14,7 +14,7 @@ struct NoteListView: View {
     @Query(sort: \Symbol.ticker) private var allSymbols: [Symbol]
     @Query(sort: \Tag.name) private var allTags: [Tag]
     
-    @StateObject private var noteService: NoteService
+    @State private var noteService: NoteService?
     
     @State private var searchText: String = ""
     @State private var selectedSymbol: Symbol?
@@ -23,16 +23,11 @@ struct NoteListView: View {
     @State private var dateRange: FilterBar.DateRange = .all
     @State private var selectedNote: Note?
     
-    init() {
-        let tempContext = ModelContext(AppDataModel.sharedModelContainer)
-        _noteService = StateObject(wrappedValue: NoteService(modelContext: tempContext))
-    }
-    
     var filteredAndSortedNotes: [Note] {
         var notes = allNotes
         
         // Apply search filter
-        if !searchText.isEmpty {
+        if !searchText.isEmpty, let noteService = noteService {
             notes = noteService.searchNotes(query: searchText)
         }
         
@@ -100,6 +95,15 @@ struct NoteListView: View {
             .sheet(item: $selectedNote) { note in
                 NoteDetailView(note: note)
             }
+            .onAppear {
+                initializeService()
+            }
+        }
+    }
+    
+    private func initializeService() {
+        if noteService == nil {
+            noteService = NoteService(modelContext: modelContext)
         }
     }
     

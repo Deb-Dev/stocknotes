@@ -10,7 +10,7 @@ import SwiftData
 
 struct SymbolAutocompleteView: View {
     @Environment(\.modelContext) private var modelContext
-    @StateObject private var symbolService: SymbolService
+    @State private var symbolService: SymbolService?
     
     @Binding var selectedSymbol: Symbol?
     @State private var searchText: String = ""
@@ -19,8 +19,6 @@ struct SymbolAutocompleteView: View {
     
     init(selectedSymbol: Binding<Symbol?>) {
         _selectedSymbol = selectedSymbol
-        let tempContext = ModelContext(AppDataModel.sharedModelContainer)
-        _symbolService = StateObject(wrappedValue: SymbolService(modelContext: tempContext))
     }
     
     var body: some View {
@@ -57,39 +55,61 @@ struct SymbolAutocompleteView: View {
                 .cornerRadius(8)
             }
             
-            if isSearching && !searchResults.isEmpty {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 4) {
-                        ForEach(searchResults, id: \.symbol) { result in
-                            Button(action: {
-                                selectSymbol(result)
-                            }) {
-                                HStack {
-                                    Text(result.symbol)
-                                        .fontWeight(.semibold)
-                                    Text(result.companyName)
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                    Spacer()
+            if !searchText.isEmpty {
+                if isSearching {
+                    HStack {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                        Text("Searching...")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.vertical, 8)
+                } else if !searchResults.isEmpty {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 4) {
+                            ForEach(searchResults, id: \.symbol) { result in
+                                Button(action: {
+                                    selectSymbol(result)
+                                }) {
+                                    HStack {
+                                        Text(result.symbol)
+                                            .fontWeight(.semibold)
+                                        Text(result.companyName)
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                        Spacer()
+                                    }
+                                    .padding(8)
+                                    .background(Color(.systemGray6))
+                                    .cornerRadius(6)
                                 }
-                                .padding(8)
-                                .background(Color(.systemGray6))
-                                .cornerRadius(6)
+                                .buttonStyle(.plain)
                             }
-                            .buttonStyle(.plain)
                         }
                     }
+                    .frame(maxHeight: 200)
                 }
-                .frame(maxHeight: 200)
             }
         }
         .onAppear {
-            updateService()
+            initializeService()
         }
     }
     
     private func performSearch(query: String) {
         guard !query.isEmpty else {
+            searchResults = []
+            isSearching = false
+            return
+        }
+        
+        // Ensure service is initialized
+        if symbolService == nil {
+            symbolService = SymbolService(modelContext: modelContext)
+        }
+        
+        guard let symbolService = symbolService else {
             searchResults = []
             isSearching = false
             return
@@ -107,6 +127,13 @@ struct SymbolAutocompleteView: View {
     }
     
     private func selectSymbol(_ result: SymbolSearchResult) {
+        // Ensure service is initialized
+        if symbolService == nil {
+            symbolService = SymbolService(modelContext: modelContext)
+        }
+        
+        guard let symbolService = symbolService else { return }
+        
         selectedSymbol = symbolService.addOrGetSymbol(
             ticker: result.symbol,
             companyName: result.companyName
@@ -116,9 +143,9 @@ struct SymbolAutocompleteView: View {
         isSearching = false
     }
     
-    private func updateService() {
-        if symbolService.modelContext !== modelContext {
-            // Update service context if needed
+    private func initializeService() {
+        if symbolService == nil {
+            symbolService = SymbolService(modelContext: modelContext)
         }
     }
 }

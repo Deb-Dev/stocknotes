@@ -10,7 +10,7 @@ import SwiftData
 
 struct TagInputView: View {
     @Environment(\.modelContext) private var modelContext
-    @StateObject private var tagService: TagService
+    @State private var tagService: TagService?
     
     @Binding var selectedTags: [Tag]
     @State private var tagInput: String = ""
@@ -19,8 +19,6 @@ struct TagInputView: View {
     
     init(selectedTags: Binding<[Tag]>) {
         _selectedTags = selectedTags
-        let tempContext = ModelContext(AppDataModel.sharedModelContainer)
-        _tagService = StateObject(wrappedValue: TagService(modelContext: tempContext))
     }
     
     var body: some View {
@@ -122,11 +120,14 @@ struct TagInputView: View {
             }
         }
         .onAppear {
+            initializeService()
             loadSuggestedTags()
         }
     }
     
     private func addTagFromInput() {
+        guard let tagService = tagService else { return }
+        
         let trimmed = tagInput.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
         
@@ -152,7 +153,7 @@ struct TagInputView: View {
     }
     
     private func searchTags(query: String) {
-        guard !query.isEmpty else {
+        guard !query.isEmpty, let tagService = tagService else {
             searchResults = []
             return
         }
@@ -161,7 +162,14 @@ struct TagInputView: View {
     }
     
     private func loadSuggestedTags() {
+        guard let tagService = tagService else { return }
         suggestedTags = tagService.getSuggestedTags(limit: 10)
+    }
+    
+    private func initializeService() {
+        if tagService == nil {
+            tagService = TagService(modelContext: modelContext)
+        }
     }
 }
 

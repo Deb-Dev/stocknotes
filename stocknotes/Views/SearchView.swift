@@ -13,9 +13,9 @@ struct SearchView: View {
     @Query(sort: \Note.createdDate, order: .reverse) private var allNotes: [Note]
     @Query(sort: \Symbol.ticker) private var allSymbols: [Symbol]
     
-    @StateObject private var noteService: NoteService
-    @StateObject private var symbolService: SymbolService
-    @StateObject private var snapService: SnapService
+    @State private var noteService: NoteService?
+    @State private var symbolService: SymbolService?
+    @State private var snapService: SnapService?
     
     @State private var searchText: String = ""
     @State private var searchScope: SearchScope = .notes
@@ -27,15 +27,8 @@ struct SearchView: View {
         case symbols = "Symbols"
     }
     
-    init() {
-        let tempContext = ModelContext(AppDataModel.sharedModelContainer)
-        _noteService = StateObject(wrappedValue: NoteService(modelContext: tempContext))
-        _symbolService = StateObject(wrappedValue: SymbolService(modelContext: tempContext))
-        _snapService = StateObject(wrappedValue: SnapService(modelContext: tempContext))
-    }
-    
     var filteredNotes: [Note] {
-        guard !searchText.isEmpty else { return [] }
+        guard !searchText.isEmpty, let noteService = noteService else { return [] }
         return noteService.searchNotes(query: searchText)
     }
     
@@ -112,8 +105,9 @@ struct SearchView: View {
                                                 selectedSymbol = symbol
                                             },
                                             onSnap: {
+                                                guard let snapService = self.snapService else { return }
                                                 Task {
-                                                    await self.snapService.createSnap(for: symbol)
+                                                    await snapService.createSnap(for: symbol)
                                                 }
                                             },
                                             onDelete: {}
@@ -137,6 +131,17 @@ struct SearchView: View {
             .sheet(item: $selectedSymbol) { symbol in
                 SymbolDetailView(symbol: symbol)
             }
+            .onAppear {
+                initializeServices()
+            }
+        }
+    }
+    
+    private func initializeServices() {
+        if noteService == nil {
+            noteService = NoteService(modelContext: modelContext)
+            symbolService = SymbolService(modelContext: modelContext)
+            snapService = SnapService(modelContext: modelContext)
         }
     }
 }

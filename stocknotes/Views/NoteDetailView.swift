@@ -12,15 +12,13 @@ struct NoteDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     
-    @StateObject private var noteService: NoteService
+    @State private var noteService: NoteService?
     
     let note: Note
     @State private var isEditing = false
     
     init(note: Note) {
         self.note = note
-        let tempContext = ModelContext(AppDataModel.sharedModelContainer)
-        _noteService = StateObject(wrappedValue: NoteService(modelContext: tempContext))
     }
     
     var body: some View {
@@ -111,10 +109,20 @@ struct NoteDetailView: View {
             .sheet(isPresented: $isEditing) {
                 NoteEditorView(note: note)
             }
+            .onAppear {
+                initializeService()
+            }
+        }
+    }
+    
+    private func initializeService() {
+        if noteService == nil {
+            noteService = NoteService(modelContext: modelContext)
         }
     }
     
     private func deleteNote() {
+        guard let noteService = noteService else { return }
         noteService.deleteNote(note)
         dismiss()
     }

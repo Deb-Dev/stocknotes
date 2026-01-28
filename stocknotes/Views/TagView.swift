@@ -14,7 +14,7 @@ struct TagView: View {
     let tag: Tag
     @Query private var allNotes: [Note]
     
-    @StateObject private var noteService: NoteService
+    @State private var noteService: NoteService?
     
     @State private var selectedNote: Note?
     
@@ -27,9 +27,6 @@ struct TagView: View {
     init(tag: Tag) {
         self.tag = tag
         _allNotes = Query(sort: \Note.createdDate, order: .reverse)
-        
-        let tempContext = ModelContext(AppDataModel.sharedModelContainer)
-        _noteService = StateObject(wrappedValue: NoteService(modelContext: tempContext))
     }
     
     var body: some View {
@@ -58,6 +55,15 @@ struct TagView: View {
             .sheet(item: $selectedNote) { note in
                 NoteDetailView(note: note)
             }
+            .onAppear {
+                initializeService()
+            }
+        }
+    }
+    
+    private func initializeService() {
+        if noteService == nil {
+            noteService = NoteService(modelContext: modelContext)
         }
     }
 }

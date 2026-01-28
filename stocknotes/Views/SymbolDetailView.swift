@@ -14,9 +14,9 @@ struct SymbolDetailView: View {
     let symbol: Symbol
     @Query(sort: \Note.createdDate, order: .reverse) private var allNotes: [Note]
     
-    @StateObject private var noteService: NoteService
-    @StateObject private var symbolService: SymbolService
-    @StateObject private var snapService: SnapService
+    @State private var noteService: NoteService?
+    @State private var symbolService: SymbolService?
+    @State private var snapService: SnapService?
     
     @State private var showingNewNote = false
     @State private var selectedNote: Note?
@@ -28,11 +28,6 @@ struct SymbolDetailView: View {
     
     init(symbol: Symbol) {
         self.symbol = symbol
-        
-        let tempContext = ModelContext(AppDataModel.sharedModelContainer)
-        _noteService = StateObject(wrappedValue: NoteService(modelContext: tempContext))
-        _symbolService = StateObject(wrappedValue: SymbolService(modelContext: tempContext))
-        _snapService = StateObject(wrappedValue: SnapService(modelContext: tempContext))
     }
     
     var body: some View {
@@ -165,10 +160,23 @@ struct SymbolDetailView: View {
             .sheet(item: $selectedNote) { note in
                 NoteDetailView(note: note)
             }
+            .onAppear {
+                initializeServices()
+            }
+        }
+    }
+    
+    private func initializeServices() {
+        if noteService == nil {
+            noteService = NoteService(modelContext: modelContext)
+            symbolService = SymbolService(modelContext: modelContext)
+            snapService = SnapService(modelContext: modelContext)
         }
     }
     
     private func refreshPrice() {
+        guard let symbolService = symbolService else { return }
+        
         isRefreshingPrice = true
         Task {
             await symbolService.fetchPrice(for: symbol)
@@ -177,6 +185,8 @@ struct SymbolDetailView: View {
     }
     
     private func createSnap() {
+        guard let snapService = snapService else { return }
+        
         Task {
             await snapService.createSnap(for: symbol)
         }

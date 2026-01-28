@@ -15,7 +15,7 @@ struct ExportView: View {
     @Query(sort: \Note.createdDate, order: .reverse) private var allNotes: [Note]
     @Query(sort: \Symbol.ticker) private var allSymbols: [Symbol]
     
-    @StateObject private var noteService: NoteService
+    @State private var noteService: NoteService?
     
     @State private var exportOption: ExportOption = .allNotes
     @State private var selectedSymbol: Symbol?
@@ -26,11 +26,6 @@ struct ExportView: View {
     enum ExportOption: String, CaseIterable {
         case allNotes = "All Notes"
         case symbolNotes = "Notes for Symbol"
-    }
-    
-    init() {
-        let tempContext = ModelContext(AppDataModel.sharedModelContainer)
-        _noteService = StateObject(wrappedValue: NoteService(modelContext: tempContext))
     }
     
     var body: some View {
@@ -66,7 +61,7 @@ struct ExportView: View {
                         }
                         .frame(maxWidth: .infinity)
                     }
-                    .disabled(isExporting || (exportOption == .symbolNotes && selectedSymbol == nil))
+                    .disabled(isExporting || (exportOption == .symbolNotes && selectedSymbol == nil) || noteService == nil)
                 }
             }
             .navigationTitle("Export Notes")
@@ -83,10 +78,21 @@ struct ExportView: View {
                     ShareSheet(items: [url])
                 }
             }
+            .onAppear {
+                initializeService()
+            }
+        }
+    }
+    
+    private func initializeService() {
+        if noteService == nil {
+            noteService = NoteService(modelContext: modelContext)
         }
     }
     
     private func exportPDF() {
+        guard let noteService = noteService else { return }
+        
         isExporting = true
         
         let notesToExport: [Note]

@@ -12,8 +12,8 @@ struct QuickSnapView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     
-    @StateObject private var symbolService: SymbolService
-    @StateObject private var snapService: SnapService
+    @State private var symbolService: SymbolService?
+    @State private var snapService: SnapService?
     
     @State private var selectedSymbol: Symbol?
     @State private var searchText: String = ""
@@ -23,9 +23,6 @@ struct QuickSnapView: View {
     
     init(initialSymbol: Symbol? = nil) {
         _selectedSymbol = State(initialValue: initialSymbol)
-        let tempContext = ModelContext(AppDataModel.sharedModelContainer)
-        _symbolService = StateObject(wrappedValue: SymbolService(modelContext: tempContext))
-        _snapService = StateObject(wrappedValue: SnapService(modelContext: tempContext))
     }
     
     var body: some View {
@@ -96,7 +93,7 @@ struct QuickSnapView: View {
                     Button("Snap") {
                         createSnap()
                     }
-                    .disabled(selectedSymbol == nil || isCreatingSnap)
+                    .disabled(selectedSymbol == nil || isCreatingSnap || symbolService == nil)
                 }
             }
             .overlay {
@@ -108,10 +105,22 @@ struct QuickSnapView: View {
                         .shadow(radius: 10)
                 }
             }
+            .onAppear {
+                initializeServices()
+            }
+        }
+    }
+    
+    private func initializeServices() {
+        if symbolService == nil {
+            symbolService = SymbolService(modelContext: modelContext)
+            snapService = SnapService(modelContext: modelContext)
         }
     }
     
     private func searchSymbols(query: String) {
+        guard let symbolService = symbolService else { return }
+        
         Task {
             let results = await symbolService.searchSymbols(query: query)
             await MainActor.run {
@@ -121,6 +130,8 @@ struct QuickSnapView: View {
     }
     
     private func selectSymbol(_ result: SymbolSearchResult) {
+        guard let symbolService = symbolService else { return }
+        
         selectedSymbol = symbolService.addOrGetSymbol(
             ticker: result.symbol,
             companyName: result.companyName
@@ -130,7 +141,7 @@ struct QuickSnapView: View {
     }
     
     private func createSnap() {
-        guard let symbol = selectedSymbol else { return }
+        guard let symbol = selectedSymbol, let snapService = snapService else { return }
         
         isCreatingSnap = true
         

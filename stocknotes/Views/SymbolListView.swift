@@ -12,19 +12,13 @@ struct SymbolListView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Symbol.ticker) private var symbols: [Symbol]
     
-    @StateObject private var symbolService: SymbolService
-    @StateObject private var snapService: SnapService
+    @State private var symbolService: SymbolService?
+    @State private var snapService: SnapService?
     
     @State private var selectedSymbol: Symbol?
     @State private var showingAddSymbol = false
     @State private var showingSnap = false
     @State private var symbolToDelete: Symbol?
-    
-    init() {
-        let tempContext = ModelContext(AppDataModel.sharedModelContainer)
-        _symbolService = StateObject(wrappedValue: SymbolService(modelContext: tempContext))
-        _snapService = StateObject(wrappedValue: SnapService(modelContext: tempContext))
-    }
     
     var body: some View {
         NavigationStack {
@@ -43,6 +37,7 @@ struct SymbolListView: View {
                                 selectedSymbol = symbol
                             },
                             onSnap: {
+                                guard let snapService = snapService else { return }
                                 Task {
                                     await snapService.createSnap(for: symbol)
                                 }
@@ -77,7 +72,7 @@ struct SymbolListView: View {
                     symbolToDelete = nil
                 }
                 Button("Delete", role: .destructive) {
-                    if let symbol = symbolToDelete {
+                    if let symbol = symbolToDelete, let symbolService = symbolService {
                         symbolService.deleteSymbol(symbol)
                         symbolToDelete = nil
                     }
@@ -88,17 +83,21 @@ struct SymbolListView: View {
                 }
             }
             .onAppear {
-                updateServices()
+                initializeServices()
                 // Refresh prices periodically
                 Task {
+                    guard let symbolService = symbolService else { return }
                     await symbolService.updateAllPrices()
                 }
             }
         }
     }
     
-    private func updateServices() {
-        // Services will use environment modelContext
+    private func initializeServices() {
+        if symbolService == nil {
+            symbolService = SymbolService(modelContext: modelContext)
+            snapService = SnapService(modelContext: modelContext)
+        }
     }
 }
 
@@ -106,16 +105,11 @@ struct AddSymbolView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     
-    @StateObject private var symbolService: SymbolService
+    @State private var symbolService: SymbolService?
     @State private var tickerInput: String = ""
     @State private var companyNameInput: String = ""
     @State private var isSearching = false
     @State private var searchResults: [SymbolSearchResult] = []
-    
-    init() {
-        let tempContext = ModelContext(AppDataModel.sharedModelContainer)
-        _symbolService = StateObject(wrappedValue: SymbolService(modelContext: tempContext))
-    }
     
     var body: some View {
         NavigationStack {
@@ -167,13 +161,24 @@ struct AddSymbolView: View {
                     Button("Add") {
                         addSymbol()
                     }
-                    .disabled(tickerInput.isEmpty)
+                    .disabled(tickerInput.isEmpty || symbolService == nil)
                 }
+            }
+            .onAppear {
+                initializeService()
             }
         }
     }
     
+    private func initializeService() {
+        if symbolService == nil {
+            symbolService = SymbolService(modelContext: modelContext)
+        }
+    }
+    
     private func searchSymbols(query: String) {
+        guard let symbolService = symbolService else { return }
+        
         isSearching = true
         Task {
             let results = await symbolService.searchSymbols(query: query)
@@ -191,6 +196,8 @@ struct AddSymbolView: View {
     }
     
     private func addSymbol() {
+        guard let symbolService = symbolService else { return }
+        
         let symbol = symbolService.addOrGetSymbol(
             ticker: tickerInput,
             companyName: companyNameInput.isEmpty ? nil : companyNameInput

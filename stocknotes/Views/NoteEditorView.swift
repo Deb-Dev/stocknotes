@@ -12,8 +12,8 @@ struct NoteEditorView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     
-    @StateObject private var noteService: NoteService
-    @StateObject private var tagService: TagService
+    @State private var noteService: NoteService?
+    @State private var tagService: TagService?
     
     @State private var content: String = ""
     @State private var selectedSymbol: Symbol?
@@ -30,9 +30,6 @@ struct NoteEditorView: View {
     init(note: Note? = nil, initialSymbol: Symbol? = nil) {
         self.note = note
         self.initialSymbol = initialSymbol
-        let tempContext = ModelContext(AppDataModel.sharedModelContainer)
-        _noteService = StateObject(wrappedValue: NoteService(modelContext: tempContext))
-        _tagService = StateObject(wrappedValue: TagService(modelContext: tempContext))
     }
     
     var body: some View {
@@ -47,7 +44,7 @@ struct NoteEditorView: View {
                         .frame(minHeight: 200)
                         .onChange(of: content) { oldValue, newValue in
                             characterCount = newValue.count
-                            if let note = note {
+                            if let note = note, let noteService = noteService {
                                 noteService.updateNote(note, content: newValue)
                             }
                         }
@@ -98,13 +95,20 @@ struct NoteEditorView: View {
                     Button("Save") {
                         saveNote()
                     }
-                    .disabled(content.isEmpty || characterCount > maxCharacters)
+                    .disabled(content.isEmpty || characterCount > maxCharacters || noteService == nil)
                 }
             }
             .onAppear {
+                initializeServices()
                 loadNote()
-                updateServices()
             }
+        }
+    }
+    
+    private func initializeServices() {
+        if noteService == nil {
+            noteService = NoteService(modelContext: modelContext)
+            tagService = TagService(modelContext: modelContext)
         }
     }
     
@@ -125,6 +129,8 @@ struct NoteEditorView: View {
     }
     
     private func saveNote() {
+        guard let noteService = noteService else { return }
+        
         isSaving = true
         
         if let existingNote = note {
@@ -151,10 +157,6 @@ struct NoteEditorView: View {
         
         isSaving = false
         dismiss()
-    }
-    
-    private func updateServices() {
-        // Services will use the environment modelContext
     }
 }
 
